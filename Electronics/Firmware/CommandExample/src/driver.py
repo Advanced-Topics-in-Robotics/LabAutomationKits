@@ -89,7 +89,7 @@ class RealMicrocontrollerService:
 def main():
     """Main function for testing the service directly."""
     tile = RealMicrocontrollerService()
-    tile.set_state(stateA = True, speedA = 4096, dirA = True)
+    tile.start_pumps(stateA = True, speedA = 4096, dirA = True)
     
     time.sleep(5)
 
