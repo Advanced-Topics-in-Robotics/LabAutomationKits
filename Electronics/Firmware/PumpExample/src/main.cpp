@@ -2,7 +2,7 @@
 #include "dataModel.h"
 #include "df4MotorDriver.h"
 
-int full_speed = 4096; // Full speed for the pumps
+uint16_t full_speed = 4096; // Full speed for the pumps
 
 void setup() {
   Serial.begin(115200);
@@ -27,4 +27,32 @@ void loop() {
   delay(3000);
   stopPumps();
   Serial.println("Pumps stopped");
+}
+
+void RunPumpA(uint16_t speed, int dir, uint32_t duration_ms) {
+    StartPumpA(speed, dir);
+    delay(duration_ms);
+    StopPumpA();
+}
+
+void RunPumpB(uint16_t speed, int dir, uint32_t duration_ms) {
+    StartPumpB(speed, dir);
+    delay(duration_ms);
+    StopPumpB();
+}
+
+void RunPumpC(uint16_t speed, int dir, uint32_t duration_ms) {
+    StartPumpC(speed, dir);
+    delay(duration_ms);
+    StopPumpC();
+}
+
+void RunAllPums(uint16_t speed, int dir, uint32_t duration_ms) {
+    StartPumpA(speed, dir);
+    StartPumpB(speed, dir);
+    StartPumpC(speed, dir);
+    delay(duration_ms);
+    StopPumpA();
+    StopPumpB();
+    StopPumpC();
 }
