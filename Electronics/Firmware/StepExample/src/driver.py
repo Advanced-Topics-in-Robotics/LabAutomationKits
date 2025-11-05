@@ -129,6 +129,18 @@ class RealMicrocontrollerService:
             log.error(f"Error setting state: {e}")
             return False
 
+    def stop_all(self):
+        """Stop all pump operations."""
+        log.info("Stopping all pumps")
+        self.comm.send("kStop")
+        try:
+            msg = self.comm.receive()
+            log.info(f"Stop all response: {msg[1]}")
+            time.sleep(1)
+            return msg[1]
+        except EOFError as e:
+            log.warning(f"No or incomplete response to stop all command: {e}")
+            return "No response"
     
     def check_for_step_done(self) -> bool:
         """Check if the current step operation has completed."""
@@ -161,7 +173,8 @@ class RealMicrocontrollerService:
 def main():
     """Main function for testing the service directly."""
     tile = RealMicrocontrollerService()
-    tile.set_state(stateA = True, speedA = 4096, dirA = True, stepTime = 50000)
+    tile.stop_all() # Ensure all pumps are stopped before starting new commands
+    tile.set_state(stateA = True, speedA = 4096, dirA = True, stepTime = 500)
     
     tile.getLastStep()
     while not tile.check_for_step_done():
