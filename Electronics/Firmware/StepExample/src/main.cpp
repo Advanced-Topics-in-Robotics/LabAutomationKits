@@ -2,6 +2,11 @@
 #include <CmdMessenger.h>
 #include "dataModel.h"
 #include "df4MotorDriver.h"
+#include <SparkFun_AS7343.h>
+
+SfeAS7343ArdI2C mySensor;
+
+uint16_t myData[ksfAS7343NumChannels]; // Array to hold spectral data
 
 CmdMessenger cmdMessenger(Serial, ',', ';', '/');
 
@@ -30,10 +35,11 @@ enum Commands
   kGetStateResult,    // Command to send the full state of the pumps
   kGetLastStep,       // Command to get the current step
   kGetLastStepResult, // Command to send the current step
-  kStepA,              // Command to receive a step (pump state + time), should always contain the full state of the pumps
+  kStep,              // Command to receive a step (pump state + time), should always contain the full state of the pumps
   kStop,              // Command to stop all pumps
   kStepADone,          // Command to signal a step done
-
+  kStepBDone,          // Command to signal a step done
+  kStepCDone           // Command to signal a step done
 };
 
 // Commands we send from the PC and want to receive on the Arduino.
@@ -45,7 +51,7 @@ void attachCommandCallbacks()
   cmdMessenger.attach(kWatchdog, OnWatchdogRequest);
   cmdMessenger.attach(kGetState, OnGetState);
   cmdMessenger.attach(kGetLastStep, OnGetLastStep);
-  cmdMessenger.attach(kStepA, OnReceiveStep);
+  cmdMessenger.attach(kStep, OnReceiveStep);
   cmdMessenger.attach(kStop, OnReceiveStop);
 }
 
@@ -95,6 +101,43 @@ void setup() {
   setupPumps();
   stopPumps();
 
+   Wire.begin();
+   
+   // Initialize sensor and run default setup.
+    if (mySensor.begin() == false)
+    {
+        Serial.println("Sensor failed to begin. Please check your wiring!");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
+
+        // Power on the device
+    if (mySensor.powerOn() == false)
+    {
+        Serial.println("Failed to power on the device.");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
+
+    // Set the AutoSmux to output all 18 channels
+    if (mySensor.setAutoSmux(AUTOSMUX_18_CHANNELS) == false)
+    {
+        Serial.println("Failed to set AutoSmux.");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
+
+    // Enable Spectral Measurement
+    if (mySensor.enableSpectralMeasurement() == false)
+    {
+        Serial.println("Failed to enable spectral measurement.");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
   //  Do not print newLine at end of command,
   //  in order to reduce data being sent
   cmdMessenger.printLfCr(false);
@@ -123,9 +166,15 @@ void loopPump(Pump &pump, Commands stepDoneCmd)
 
 void loop() {
 
+    mySensor.ledOn();
+    delay(1000);
+    
+    mySensor.ledOff();
+    delay(1000);
   cmdMessenger.feedinSerialData();
   loopPump(currentStep.pumpA, kStepADone);
-  
+  loopPump(currentStep.pumpB, kStepBDone);
+  loopPump(currentStep.pumpC, kStepCDone);
 }
 
 
@@ -156,6 +205,21 @@ void returnLastStep()
   cmdMessenger.sendCmdEnd();
 }
 
+void readPumpStep(Pump &currentStepPump, Pump &pump)
+{
+    currentStepPump.state = cmdMessenger.readBinArg<bool>();
+    currentStepPump.speed = cmdMessenger.readBinArg<uint16_t>();
+    currentStepPump.dir = cmdMessenger.readBinArg<bool>();
+
+    currentStepPump.time = cmdMessenger.readBinArg<unsigned long>();
+    currentStepPump.stepStartTime = millis();
+    currentStepPump.done = false; 
+
+    pump.state = currentStepPump.state;
+    pump.speed = currentStepPump.speed;
+    pump.dir = currentStepPump.dir;
+}
+
 void receiveStep()
 {
   if (getPumpsState() && !getPumpsDone())
@@ -166,18 +230,27 @@ void receiveStep()
 
     cmdMessenger.readBinArg<unsigned long>();
 
-    cmdMessenger.sendCmd(kError, "Busy soknndosn");
+    cmdMessenger.readBinArg<bool>();
+    cmdMessenger.readBinArg<uint16_t>();
+    cmdMessenger.readBinArg<bool>();
+
+    cmdMessenger.readBinArg<unsigned long>();
+
+    cmdMessenger.readBinArg<bool>();
+    cmdMessenger.readBinArg<uint16_t>();
+    cmdMessenger.readBinArg<bool>();
+
+    cmdMessenger.readBinArg<unsigned long>();
+
+    cmdMessenger.sendCmd(kError, "Busy");
     // cmdMessenger.sendCmdBinArg<unsigned long>(currentStep.time);
   }
   else
   {
-    currentStep.pumpA.state = cmdMessenger.readBinArg<bool>();
-    currentStep.pumpA.speed = cmdMessenger.readBinArg<uint16_t>();
-    currentStep.pumpA.dir = cmdMessenger.readBinArg<bool>();
+    readPumpStep(currentStep.pumpA, pumpA);
+    readPumpStep(currentStep.pumpB, pumpB);
+    readPumpStep(currentStep.pumpC, pumpC);
 
-    pumpA.state = currentStep.pumpA.state;
-    pumpA.speed = currentStep.pumpA.speed;
-    pumpA.dir = currentStep.pumpA.dir;
 
     if (currentStep.pumpA.state)
     {
@@ -188,10 +261,24 @@ void receiveStep()
       StopPumpA();
     }
 
+    if (currentStep.pumpB.state)
+    {
+      StartPumpB(currentStep.pumpB.speed, currentStep.pumpB.dir);
+    }
+    else
+    {
+      StopPumpB();
+    }
 
-    currentStep.pumpA.time = cmdMessenger.readBinArg<unsigned long>();
-    currentStep.pumpA.stepStartTime = millis();
-    currentStep.pumpA.done = false;
+    if (currentStep.pumpC.state)
+    {
+      StartPumpC(currentStep.pumpC.speed, currentStep.pumpC.dir);
+    }
+    else
+    {
+      StopPumpC();
+    }
+
 
     cmdMessenger.sendCmdStart(kAcknowledge);
     cmdMessenger.sendCmdArg("Step");

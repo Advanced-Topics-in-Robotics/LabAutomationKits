@@ -56,10 +56,9 @@ def send_command_to_hardware(pumpA, pumpB, pumpC, duration):
 
     # Send command to hardware
     micro.set_state(
-        stateA, speedA, dirA,
-        stateB, speedB, dirB,
-        stateC, speedC, dirC,
-        duration
+        stateA, speedA, dirA, duration,
+        stateB, speedB, dirB, duration,
+        stateC, speedC, dirC, duration,
     )
 
     return duration

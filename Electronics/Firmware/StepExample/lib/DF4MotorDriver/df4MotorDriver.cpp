@@ -11,7 +11,7 @@ void StartPumpA(uint16_t speed, int dir){
 void StartPumpB(uint16_t speed, int dir){
     //Setting initial velocity(Min:0  Max:127)
     uint16_t speedCorrected = map(speed,0,4096,0,4096);
-    digitalWrite(DFDRIVER_DIR_2,dir);
+    digitalWrite(DFDRIVER_DIR_2,!dir); // motor B is inverted
     analogWrite(DFDRIVER_PWM_2,speedCorrected);
 }
 

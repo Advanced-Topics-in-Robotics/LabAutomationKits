@@ -37,9 +37,11 @@ class RealMicrocontrollerService:
                     ["kGetStateResult", "?I?"],
                     ["kGetLastStep", ""],
                     ["kGetLastStepResult", "??L?I?"],
-                    ["kStepA", "?I?L"],
+                    ["kStep", "?I?L?I?L?I?L"],
                     ["kStop", ""],
-                    ["kStepADone", ""], ]
+                    ["kStepADone", ""],
+                    ["kStepBDone", ""],
+                    ["kStepCDone", ""], ]
 
         # Initialize the messenger
         self.comm = PyCmdMessenger.CmdMessenger(ESP32, commands)
@@ -119,19 +121,27 @@ class RealMicrocontrollerService:
         stateA: bool = False,
         speedA: int = 0,
         dirA: bool = True,
+        stepTimeA: int = 50000,
         stateB: bool = False,
         speedB: int = 0,
         dirB: bool = True,
+        stepTimeB: int = 50000,
         stateC: bool = False,
         speedC: int = 0,
         dirC: bool = True,
-        stepTime: int = 50000):
+        stepTimeC: int = 50000):
         """
         Set the state of pumps A, B, C and the LEDs
         """
-        log.info(f"Setting state: A={stateA},{speedA},{dirA} time={stepTime}")
+        log.info(f"Setting state: A={stateA},{speedA},{dirA} time={stepTimeA}")
+        log.info(f"Setting state: B={stateB},{speedB},{dirB} time={stepTimeB}")
+        log.info(f"Setting state: C={stateC},{speedC},{dirC} time={stepTimeC}")
         try:
-            self.comm.send("kStepA", stateA, speedA, dirA, stepTime)
+            self.comm.send("kStep",
+                stateA, speedA, dirA, stepTimeA,
+                stateB, speedB, dirB, stepTimeB,
+                stateC, speedC, dirC, stepTimeC
+            )
             msg = self.comm.receive()
             log.info(msg)
             log.info(f"State set response: {msg[1]}")
