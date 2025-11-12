@@ -33,29 +33,40 @@ async def perform_actions(request: ActionRequest, background_tasks: BackgroundTa
     busy = True
     stop_requested = False
     # Send 'acknowledged' webhook immediately
-    
+
     background_tasks.add_task(action_task, request)
     return {"status": "accepted", "id": request.id}
 
 # --- Helper methods ---
-def send_command_to_hardware(pumpA, duration):
+def send_command_to_hardware(pumpA, pumpB, pumpC, duration):
+    print("pump a state", pumpA.state)
     # Extract pump parameters
     stateA = pumpA.state if pumpA else False
     speedA = pumpA.speed if pumpA else 0
     dirA = pumpA.dir if pumpA else True
-    
-    
+
+    stateB = pumpB.state if pumpB else False
+    speedB = pumpB.speed if pumpB else 0
+    dirB = pumpB.dir if pumpB else True
+
+    stateC = pumpC.state if pumpC else False
+    speedC = pumpC.speed if pumpC else 0
+    dirC = pumpC.dir if pumpC else True
+
+
     # Send command to hardware
     micro.set_state(
         stateA, speedA, dirA,
+        stateB, speedB, dirB,
+        stateC, speedC, dirC,
         duration
     )
-    
+
     return duration
 
 def handle_stop(job_id):
     """Handles stopping everything, fetching/logging/streaming state, and sending notifications."""
-    micro.stop_all()  # Unified stop for all motors (pumps and mixer)
+    micro.stopPumps()  # Unified stop for all motors (pumps and mixer)
     try:
         current_state = micro.getState()
         log.info(f"Fetched state after stopping everything: {current_state}")
@@ -67,11 +78,11 @@ def handle_stop(job_id):
     except Exception as e:
         log.error(f"Error fetching state after stopping everything: {e}")
 
-def monitor_operations(job_id, pumpA, step_time):
+def monitor_operations(job_id, pumpA, pumpB, pumpC, step_time):
     global busy, stop_requested
     pump_done = False if (pumpA) else True
     start_time = time.time()
-    
+
     interval = 0.1
 
 
@@ -101,11 +112,14 @@ def monitor_operations(job_id, pumpA, step_time):
 def action_task(request: ActionRequest):
     job_id = request.id
     pumpA = request.pumpA
+    pumpB = request.pumpB
+    pumpC = request.pumpC
+
     duration = request.time
       # Send motor command
-    step_time = send_command_to_hardware(pumpA, duration)
+    step_time = send_command_to_hardware(pumpA, pumpB, pumpC, duration)
     # Monitor operation
-    monitor_operations(job_id, pumpA, step_time)
+    monitor_operations(job_id, pumpA, pumpB, pumpC, step_time)
 
 @app.post("/stop")
 async def emergency_stop():
@@ -119,5 +133,4 @@ async def emergency_stop():
 @app.get("/status")
 def get_status():
     global busy
-    return {"busy": busy} 
-
+    return {"busy": busy}

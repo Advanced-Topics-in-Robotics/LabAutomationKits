@@ -20,7 +20,7 @@ void returnLastStep();
 void receiveStep();
 void receiveStop();
 
-enum
+enum Commands
 {
   // Commands
   kWatchdog,          // Command to request application ID
@@ -30,9 +30,9 @@ enum
   kGetStateResult,    // Command to send the full state of the pumps
   kGetLastStep,       // Command to get the current step
   kGetLastStepResult, // Command to send the current step
-  kStep,              // Command to receive a step (pump state + time), should always contain the full state of the pumps
+  kStepA,              // Command to receive a step (pump state + time), should always contain the full state of the pumps
   kStop,              // Command to stop all pumps
-  kStepDone,          // Command to signal a step done
+  kStepADone,          // Command to signal a step done
 
 };
 
@@ -45,7 +45,7 @@ void attachCommandCallbacks()
   cmdMessenger.attach(kWatchdog, OnWatchdogRequest);
   cmdMessenger.attach(kGetState, OnGetState);
   cmdMessenger.attach(kGetLastStep, OnGetLastStep);
-  cmdMessenger.attach(kStep, OnReceiveStep);
+  cmdMessenger.attach(kStepA, OnReceiveStep);
   cmdMessenger.attach(kStop, OnReceiveStop);
 }
 
@@ -93,6 +93,7 @@ void setup() {
 
   Serial.begin(115200);
   setupPumps();
+  stopPumps();
 
   //  Do not print newLine at end of command,
   //  in order to reduce data being sent
@@ -105,30 +106,28 @@ void setup() {
  
 }
 
+void loopPump(Pump &pump, Commands stepDoneCmd)
+{
+  if (pump.state){
+    if (!pump.done){
+      if (millis() - pump.stepStartTime >= pump.time){
+        pump.done = true;
+        stopPump();
+        cmdMessenger.sendCmd(stepDoneCmd);
+      }
+    } else {
+      pump.state = false;
+    }
+  }
+}
+
 void loop() {
 
   cmdMessenger.feedinSerialData();
-  if (currentStep.state)
-  {
-    // Serial.println("Entering queue");
-    if (!currentStep.done)
-    {
-      // Serial.println("Step not done");
-      if (millis() - currentStep.stepStartTime >= currentStep.time)
-      {
-        currentStep.done = true;
-        stopPumps();
-        cmdMessenger.sendCmd(kStepDone);
-      }
-    }
-    else
-    {
-      currentStep.state = false;
-      // Serial.println("Deactivating queue and clearing after done");
-    }
-  }
-
+  loopPump(currentStep.pumpA, kStepADone);
+  
 }
+
 
 void returnState()
 {
@@ -146,21 +145,20 @@ void returnLastStep()
 
   cmdMessenger.sendCmdStart(kGetLastStepResult);
 
-  cmdMessenger.sendCmdBinArg<bool>(currentStep.state);
-  cmdMessenger.sendCmdBinArg<bool>(currentStep.done);
-  cmdMessenger.sendCmdBinArg<unsigned long>(currentStep.time);
+  cmdMessenger.sendCmdBinArg<bool>(getPumpsState());
+  cmdMessenger.sendCmdBinArg<bool>(getPumpsDone());
+  cmdMessenger.sendCmdBinArg<unsigned long>(currentStep.pumpA.time);
 
-  cmdMessenger.sendCmdBinArg<bool>(currentStep.stateA);
-  cmdMessenger.sendCmdBinArg<uint16_t>(currentStep.speedA);
-  cmdMessenger.sendCmdBinArg<bool>(currentStep.dirA);
+  cmdMessenger.sendCmdBinArg<bool>(currentStep.pumpA.state);
+  cmdMessenger.sendCmdBinArg<uint16_t>(currentStep.pumpA.speed);
+  cmdMessenger.sendCmdBinArg<bool>(currentStep.pumpA.dir);
 
   cmdMessenger.sendCmdEnd();
 }
 
 void receiveStep()
 {
-
-  if (currentStep.state && !currentStep.done)
+  if (getPumpsState() && !getPumpsDone())
   {
     cmdMessenger.readBinArg<bool>();
     cmdMessenger.readBinArg<uint16_t>();
@@ -168,33 +166,32 @@ void receiveStep()
 
     cmdMessenger.readBinArg<unsigned long>();
 
-    cmdMessenger.sendCmd(kError, "Busy");
+    cmdMessenger.sendCmd(kError, "Busy soknndosn");
     // cmdMessenger.sendCmdBinArg<unsigned long>(currentStep.time);
   }
   else
   {
-    currentStep.stateA = cmdMessenger.readBinArg<bool>();
-    currentStep.speedA = cmdMessenger.readBinArg<uint16_t>();
-    currentStep.dirA = cmdMessenger.readBinArg<bool>();
+    currentStep.pumpA.state = cmdMessenger.readBinArg<bool>();
+    currentStep.pumpA.speed = cmdMessenger.readBinArg<uint16_t>();
+    currentStep.pumpA.dir = cmdMessenger.readBinArg<bool>();
 
-    if (currentStep.stateA)
+    pumpA.state = currentStep.pumpA.state;
+    pumpA.speed = currentStep.pumpA.speed;
+    pumpA.dir = currentStep.pumpA.dir;
+
+    if (currentStep.pumpA.state)
     {
-      StartPumpA(currentStep.speedA, currentStep.dirA);
+      StartPumpA(currentStep.pumpA.speed, currentStep.pumpA.dir);
     }
     else
     {
       StopPumpA();
     }
 
-    pumpA.state = currentStep.stateA;
-    pumpA.speed = currentStep.speedA;
-    pumpA.dir = currentStep.dirA;
 
-    currentStep.time = cmdMessenger.readBinArg<unsigned long>();
-
-    currentStep.state = true;
-    currentStep.done = false;
-    currentStep.stepStartTime = millis();
+    currentStep.pumpA.time = cmdMessenger.readBinArg<unsigned long>();
+    currentStep.pumpA.stepStartTime = millis();
+    currentStep.pumpA.done = false;
 
     cmdMessenger.sendCmdStart(kAcknowledge);
     cmdMessenger.sendCmdArg("Step");
@@ -207,9 +204,9 @@ void receiveStop()
 {
 
   stopPumps();
-  
-  currentStep.done = true;
-  currentStep.state = false;
+
+  setDonePumps(true);
+  setStatePumps(false);
   cmdMessenger.sendCmd(kAcknowledge, "Stopped");
 }
 

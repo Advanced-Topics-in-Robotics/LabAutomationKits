@@ -47,6 +47,41 @@ void setupPumps(){
     pinMode(DFDRIVER_DIR_3,OUTPUT);
     pinMode(DFDRIVER_DIR_4,OUTPUT);
 }
+void stopPump(){
+    if (currentStep.pumpA.done){
+        pumpA.state = false;
+        StopPumpA();
+    }
+    if (currentStep.pumpB.done){
+        pumpB.state = false;
+        StopPumpB();
+    }
+    if (currentStep.pumpC.done){
+        pumpC.state = false;
+        StopPumpC();
+    }
+}
+
+bool getPumpsState(){
+    return currentStep.pumpA.state || currentStep.pumpB.state || currentStep.pumpC.state;
+}
+
+bool getPumpsDone(){
+    return currentStep.pumpA.done && currentStep.pumpB.done && currentStep.pumpC.done;
+}
+
+void setStatePumps(bool state){
+    pumpA.state = state;
+    pumpB.state = state;
+    pumpC.state = state;
+}
+
+void setDonePumps(bool done){
+    currentStep.pumpA.done = done;
+    currentStep.pumpB.done = done;
+    currentStep.pumpC.done = done;
+}
+
 
 void stopPumps(){
   pumpA.state = false;

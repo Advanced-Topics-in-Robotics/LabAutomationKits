@@ -11,6 +11,9 @@ class Pump{
         bool state = false;
         uint16_t speed = 0;
         bool dir = true;
+        unsigned long stepStartTime;
+        unsigned long time;
+        bool done = false;
 };
 
 

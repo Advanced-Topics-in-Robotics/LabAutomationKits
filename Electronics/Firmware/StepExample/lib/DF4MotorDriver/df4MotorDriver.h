@@ -16,20 +16,11 @@
 
 class Step {
     public:
-        bool stateA;
-        uint16_t speedA;
-        bool dirA;
-        bool stateB;
-        uint16_t speedB;
-        bool dirB;
-        bool stateC;
-        uint16_t speedC;
-        bool dirC;
-        unsigned long time;
-        bool state = false;
-        bool done = false;
-        unsigned long stepStartTime;
+        Pump pumpA;
+        Pump pumpB;
+        Pump pumpC;
 };
+
 
 extern Step currentStep;
 
@@ -43,7 +34,14 @@ void StopPumpB();
 void StopPumpC();
 
 void setupPumps();
+void stopPump();
 void stopPumps();
+
+bool getPumpsState();
+bool getPumpsDone();
+
+void setStatePumps(bool state);
+void setDonePumps(bool done);
 
 
 #endif

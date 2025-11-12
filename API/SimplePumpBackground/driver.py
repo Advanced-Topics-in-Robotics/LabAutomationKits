@@ -37,9 +37,9 @@ class RealMicrocontrollerService:
                     ["kGetStateResult", "?I?"],
                     ["kGetLastStep", ""],
                     ["kGetLastStepResult", "??L?I?"],
-                    ["kStep", "?I?L"],
+                    ["kStepA", "?I?L"],
                     ["kStop", ""],
-                    ["kStepDone", ""], ]
+                    ["kStepADone", ""], ]
 
         # Initialize the messenger
         self.comm = PyCmdMessenger.CmdMessenger(ESP32, commands)
@@ -78,13 +78,13 @@ class RealMicrocontrollerService:
     def get_state_pretty(self):
         """
         Pretty wrapper for getState
-        
+
         Returns state in a processed format:
         - If state is a list: converts to dictionary with pumpA and pumpB keys
         - Otherwise returns the raw state
         """
         raw_state = self.getState()
-        
+
         # If state is a list in the format [stateA, speedA, dirA, stateB, speedB, dirB]
         if isinstance(raw_state, list) and len(raw_state) >= 3:
             # Convert to dictionary format for easier processing
@@ -94,7 +94,7 @@ class RealMicrocontrollerService:
                     "speed": int(raw_state[1]),
                     "dir": bool(raw_state[2])
                 },
-                
+
             }
         # Return raw state if not in expected list format
         return raw_state
@@ -114,13 +114,24 @@ class RealMicrocontrollerService:
         return result
 
 
-    def set_state(self, stateA: bool = False, speedA: int = 0, dirA: bool = True, stepTime: int = 50000):
+    def set_state(
+        self,
+        stateA: bool = False,
+        speedA: int = 0,
+        dirA: bool = True,
+        stateB: bool = False,
+        speedB: int = 0,
+        dirB: bool = True,
+        stateC: bool = False,
+        speedC: int = 0,
+        dirC: bool = True,
+        stepTime: int = 50000):
         """
         Set the state of pumps A, B, C and the LEDs
         """
         log.info(f"Setting state: A={stateA},{speedA},{dirA} time={stepTime}")
         try:
-            self.comm.send("kStep", stateA, speedA, dirA, stepTime)
+            self.comm.send("kStepA", stateA, speedA, dirA, stepTime)
             msg = self.comm.receive()
             log.info(msg)
             log.info(f"State set response: {msg[1]}")
@@ -129,7 +140,7 @@ class RealMicrocontrollerService:
             log.error(f"Error setting state: {e}")
             return False
 
-    
+
     def check_for_step_done(self) -> bool:
         """Check if the current step operation has completed."""
         log.debug("Checking for step completion")
@@ -137,7 +148,7 @@ class RealMicrocontrollerService:
             msg = self.comm.receive()
             if msg is not None:
                 log.debug(f"Step check message: {msg[0]}")
-            if msg is not None and msg[0] == "kStepDone":
+            if msg is not None and msg[0] == "kStepADone":
                 log.info("Step operation completed")
                 current_state = self.getState()
                 log.info(f"Fetched state after stop command: {current_state}")
@@ -162,7 +173,7 @@ def main():
     """Main function for testing the service directly."""
     tile = RealMicrocontrollerService()
     tile.set_state(stateA = True, speedA = 4096, dirA = True, stepTime = 50000)
-    
+
     tile.getLastStep()
     while not tile.check_for_step_done():
         log.info("Waiting for step to complete...")
