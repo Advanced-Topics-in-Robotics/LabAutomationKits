@@ -125,6 +125,7 @@ def action_task(request: ActionRequest):
 async def emergency_stop():
     global stop_requested, busy
     stop_requested = True
+    handle_stop("emergency_stop")
     busy = False  # Fallback: ensure busy is reset if stop is called
     log.info("/stop called: busy set to False")
     return {"status": "stopped"}
@@ -148,7 +149,7 @@ def get_color():
     return {"color": color}
 
 @app.post("/cleaning_cycle")
-def start_cleaning_cycle():
+def start_cleaning_cycle(background_tasks: BackgroundTasks):
     global busy, stop_requested
     if busy:
         return {"status": "busy"}
