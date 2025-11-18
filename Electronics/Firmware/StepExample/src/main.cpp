@@ -19,11 +19,15 @@ void OnGetState();
 void OnGetLastStep();
 void OnReceiveStep();
 void OnReceiveStop();
+void OnGetColor();
 
 void returnState();
 void returnLastStep();
 void receiveStep();
 void receiveStop();
+void readSensor();
+void returnColor();
+
 
 enum Commands
 {
@@ -39,7 +43,9 @@ enum Commands
   kStop,              // Command to stop all pumps
   kStepADone,          // Command to signal a step done
   kStepBDone,          // Command to signal a step done
-  kStepCDone           // Command to signal a step done
+  kStepCDone,          // Command to signal a step done
+  kGetColor,          // Command to get the color data from the sensor
+  kGetColorResult     // Command to send the color data from the sensor
 };
 
 // Commands we send from the PC and want to receive on the Arduino.
@@ -53,6 +59,8 @@ void attachCommandCallbacks()
   cmdMessenger.attach(kGetLastStep, OnGetLastStep);
   cmdMessenger.attach(kStep, OnReceiveStep);
   cmdMessenger.attach(kStop, OnReceiveStop);
+  cmdMessenger.attach(kGetColor, OnGetColor);
+  cmdMessenger.attach(kGetColorResult, returnColor);
 }
 
 // ------------------  C A L L B A C K S -----------------------
@@ -95,6 +103,11 @@ void OnReceiveStop()
   receiveStop();
 }
 
+void OnGetColor()
+{
+    readSensor();
+}
+
 void setup() {
 
   Serial.begin(115200);
@@ -102,7 +115,7 @@ void setup() {
   stopPumps();
 
    Wire.begin();
-   
+
    // Initialize sensor and run default setup.
     if (mySensor.begin() == false)
     {
@@ -165,18 +178,58 @@ void loopPump(Pump &pump, Commands stepDoneCmd)
 }
 
 void loop() {
-
-    mySensor.ledOn();
-    delay(1000);
-    
-    mySensor.ledOff();
-    delay(1000);
   cmdMessenger.feedinSerialData();
   loopPump(currentStep.pumpA, kStepADone);
   loopPump(currentStep.pumpB, kStepBDone);
   loopPump(currentStep.pumpC, kStepCDone);
 }
 
+void readSensor()
+{
+    mySensor.ledOn();
+
+    // wait for LED to be on for a bit with no blocking delay
+    int ledOnTime = millis();
+    while (millis() - ledOnTime < 100)
+    {
+        // do nothing
+    }
+
+
+    // Read all data registers
+    // if it fails, print a failure message and continue
+    if (mySensor.readSpectraDataFromSensor() == false)
+    {
+        Serial.println("Failed to read spectral data.");
+    }
+
+    mySensor.ledOff();
+
+    // Get the data from the sensor (all channels)
+    // Note, we are using AutoSmux set to 18 channels
+    // and the data will be written to the myData array
+    // The size of the array is defined in the header file
+    // This method returns the number of channels read
+    int channelsRead = mySensor.getData(myData);
+
+
+    color.red = myData[0];
+    color.green = myData[1];
+    color.blue = myData[2];
+    color.nir = myData[3];
+}
+
+void returnColor()
+{
+  cmdMessenger.sendCmdStart(kGetColorResult);
+
+  cmdMessenger.sendCmdBinArg<uint16_t>(color.red);
+  cmdMessenger.sendCmdBinArg<uint16_t>(color.green);
+  cmdMessenger.sendCmdBinArg<uint16_t>(color.blue);
+  cmdMessenger.sendCmdBinArg<uint16_t>(color.nir);
+
+  cmdMessenger.sendCmdEnd();
+}
 
 void returnState()
 {

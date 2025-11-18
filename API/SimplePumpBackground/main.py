@@ -133,3 +133,21 @@ async def emergency_stop():
 def get_status():
     global busy
     return {"busy": busy}
+
+@app.get("/get_color")
+def get_color():
+    # check if busy
+    if busy:
+        raise HTTPException(status_code=409, detail="Device is busy")
+
+    log.info("Getting color from microcontroller")
+    micro.readColor()
+    color = micro.receiveColor()
+
+    while color is False:
+        log.error("Failed to get color from microcontroller, retrying...")
+        time.sleep(0.5)
+        micro.readColor()
+        color = micro.receiveColor()
+
+    return {"color": color}

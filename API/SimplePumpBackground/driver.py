@@ -41,7 +41,9 @@ class RealMicrocontrollerService:
                     ["kStop", ""],
                     ["kStepADone", ""],
                     ["kStepBDone", ""],
-                    ["kStepCDone", ""], ]
+                    ["kStepCDone", ""],
+                    ["kGetColor", ""],
+                    ["kGetColorResult", "IIII"], ]
 
         # Initialize the messenger
         self.comm = PyCmdMessenger.CmdMessenger(ESP32, commands)
@@ -115,6 +117,27 @@ class RealMicrocontrollerService:
 
         return result
 
+    def readColor(self):
+        """Get the current color state from the microcontroller."""
+        log.info("Getting color state")
+        self.comm.send("kGetColor")
+
+    def receiveColor(self):
+        """Receive color data from the microcontroller."""
+        self.comm.send("kGetColorResult")
+        msg = self.comm.receive()
+        result = msg[1]
+
+        if len(result) != 4:
+            log.error(f"Unexpected color data length: {len(result)}")
+            return False
+
+        if any(not isinstance(c, int) for c in result):
+            log.error("Color data contains non-integer components")
+            return False
+
+        log.info(f"Current color: {result}")
+        return result
 
     def set_state(
         self,

@@ -4,4 +4,5 @@ Pump pumpA;
 Pump pumpB;
 Pump pumpC;
 
+Color color;
 

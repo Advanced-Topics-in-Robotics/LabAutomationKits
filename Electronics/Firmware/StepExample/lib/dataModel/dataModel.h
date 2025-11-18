@@ -16,10 +16,20 @@ class Pump{
         bool done = false;
 };
 
+class Color{
+    public:
+        uint16_t red = 0;
+        uint16_t green = 0;
+        uint16_t blue = 0;
+        uint16_t nir = 0;
+};
+
 
 extern Pump pumpA;
 extern Pump pumpB;
 extern Pump pumpC;
+
+extern Color color;
 
 
 #endif
