@@ -41,9 +41,7 @@ enum Commands
   kGetLastStepResult, // Command to send the current step
   kStep,              // Command to receive a step (pump state + time), should always contain the full state of the pumps
   kStop,              // Command to stop all pumps
-  kStepADone,          // Command to signal a step done
-  kStepBDone,          // Command to signal a step done
-  kStepCDone,          // Command to signal a step done
+  kStepDone,          // Command to signal a step done
   kGetColor,          // Command to get the color data from the sensor
   kGetColorResult     // Command to send the color data from the sensor
 };
@@ -162,14 +160,18 @@ void setup() {
  
 }
 
-void loopPump(Pump &pump, Commands stepDoneCmd)
+void loopPump(Pump &pump)
 {
   if (pump.state){
     if (!pump.done){
       if (millis() - pump.stepStartTime >= pump.time){
         pump.done = true;
         stopPump();
-        cmdMessenger.sendCmd(stepDoneCmd);
+
+        // if all pumps are done, send step done
+        if (getPumpsDone()){
+          cmdMessenger.sendCmd(kStepDone);
+        }
       }
     } else {
       pump.state = false;
@@ -179,9 +181,9 @@ void loopPump(Pump &pump, Commands stepDoneCmd)
 
 void loop() {
   cmdMessenger.feedinSerialData();
-  loopPump(currentStep.pumpA, kStepADone);
-  loopPump(currentStep.pumpB, kStepBDone);
-  loopPump(currentStep.pumpC, kStepCDone);
+  loopPump(currentStep.pumpA);
+  loopPump(currentStep.pumpB);
+  loopPump(currentStep.pumpC);
 }
 
 void readSensor()

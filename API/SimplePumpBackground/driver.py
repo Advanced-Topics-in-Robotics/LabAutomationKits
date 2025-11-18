@@ -39,9 +39,7 @@ class RealMicrocontrollerService:
                     ["kGetLastStepResult", "??L?I?"],
                     ["kStep", "?I?L?I?L?I?L"],
                     ["kStop", ""],
-                    ["kStepADone", ""],
-                    ["kStepBDone", ""],
-                    ["kStepCDone", ""],
+                    ["kStepDone", ""],
                     ["kGetColor", ""],
                     ["kGetColorResult", "IIII"], ]
 
@@ -181,7 +179,7 @@ class RealMicrocontrollerService:
             msg = self.comm.receive()
             if msg is not None:
                 log.debug(f"Step check message: {msg[0]}")
-            if msg is not None and msg[0] == "kStepADone":
+            if msg is not None and msg[0] == "kStepDone":
                 log.info("Step operation completed")
                 current_state = self.getState()
                 log.info(f"Fetched state after stop command: {current_state}")

@@ -5,7 +5,7 @@ import time
 from typing import Set
 import json
 
-from action_models import ActionRequest
+from action_models import ActionRequest, PumpCommand
 
 import asyncio
 import os
@@ -38,30 +38,33 @@ async def perform_actions(request: ActionRequest, background_tasks: BackgroundTa
     return {"status": "accepted", "id": request.id}
 
 # --- Helper methods ---
-def send_command_to_hardware(pumpA, pumpB, pumpC, duration):
+def send_command_to_hardware(pumpA, pumpB, pumpC):
     print("pump a state", pumpA.state)
     # Extract pump parameters
     stateA = pumpA.state if pumpA else False
     speedA = pumpA.speed if pumpA else 0
     dirA = pumpA.dir if pumpA else True
+    durationA = pumpA.time if pumpA else 0
 
     stateB = pumpB.state if pumpB else False
     speedB = pumpB.speed if pumpB else 0
     dirB = pumpB.dir if pumpB else True
+    durationB = pumpB.time if pumpB else 0
 
     stateC = pumpC.state if pumpC else False
     speedC = pumpC.speed if pumpC else 0
     dirC = pumpC.dir if pumpC else True
+    durationC = pumpC.time if pumpC else 0
 
 
     # Send command to hardware
     micro.set_state(
-        stateA, speedA, dirA, duration,
-        stateB, speedB, dirB, duration,
-        stateC, speedC, dirC, duration,
+        stateA, speedA, dirA, durationA,
+        stateB, speedB, dirB, durationB,
+        stateC, speedC, dirC, durationC,
     )
 
-    return duration
+    return max(durationA, durationB, durationC)
 
 def handle_stop(job_id):
     """Handles stopping everything, fetching/logging/streaming state, and sending notifications."""
@@ -113,10 +116,8 @@ def action_task(request: ActionRequest):
     pumpA = request.pumpA
     pumpB = request.pumpB
     pumpC = request.pumpC
-
-    duration = request.time
       # Send motor command
-    step_time = send_command_to_hardware(pumpA, pumpB, pumpC, duration)
+    step_time = send_command_to_hardware(pumpA, pumpB, pumpC)
     # Monitor operation
     monitor_operations(job_id, pumpA, pumpB, pumpC, step_time)
 
@@ -144,10 +145,25 @@ def get_color():
     micro.readColor()
     color = micro.receiveColor()
 
-    while color is False:
-        log.error("Failed to get color from microcontroller, retrying...")
-        time.sleep(0.5)
-        micro.readColor()
-        color = micro.receiveColor()
-
     return {"color": color}
+
+@app.post("/cleaning_cycle")
+def start_cleaning_cycle():
+    global busy, stop_requested
+    if busy:
+        return {"status": "busy"}
+    busy = True
+    stop_requested = False
+
+    pumpA = PumpCommand(state=True, speed=2000, dir=True, time=5000)
+    pumbB = PumpCommand(state=False, speed=0, dir=True, time=0)
+    pumpC = PumpCommand(state=True, speed=2000, dir=False, time=10000)
+    request = ActionRequest(
+        id="cleaning_cycle",
+        pumpA=pumpA,
+        pumpB=pumbB,
+        pumpC=pumpC
+    )
+
+    background_tasks.add_task(action_task, request)
+    return {"status": "accepted", "id": request.id}
