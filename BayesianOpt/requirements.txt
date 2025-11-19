@@ -1,4 +1,4 @@
-skopt
+scikit-optimize #correct package instead of skopt
 matplotlib
 numpy
-pickle
+# pickle is already included

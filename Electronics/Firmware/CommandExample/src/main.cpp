@@ -105,7 +105,7 @@ void receiveStart()
     {
       StopPumpA();
     }
-
+   cmdMessenger.sendCmd(kAcknowledge, "Arduino has started!");
 }
 
 void receiveStop()
