@@ -28,7 +28,6 @@ void receiveStop();
 void readSensor();
 void returnColor();
 
-
 enum Commands
 {
   // Commands
@@ -149,6 +148,7 @@ void setup() {
         while (1)
             ;
     }
+    
   //  Do not print newLine at end of command,
   //  in order to reduce data being sent
   cmdMessenger.printLfCr(false);
@@ -167,10 +167,19 @@ void loopPump(Pump &pump)
       if (millis() - pump.stepStartTime >= pump.time){
         pump.done = true;
         stopPump();
-
+        
+        // flash led to indicate pump done
+        mySensor.ledOn();
+        delay(100);
+        mySensor.ledOff();
         // if all pumps are done, send step done
         if (getPumpsDone()){
           cmdMessenger.sendCmd(kStepDone);
+          // flash led to indicate all pumps done
+          delay(100);
+          mySensor.ledOn();
+          delay(100);
+          mySensor.ledOff();
         }
       }
     } else {
@@ -188,14 +197,13 @@ void loop() {
 
 void readSensor()
 {
+    mySensor.setLedDrive(255);
     mySensor.ledOn();
 
     // wait for LED to be on for a bit with no blocking delay
     int ledOnTime = millis();
-    while (millis() - ledOnTime < 100)
-    {
-        // do nothing
-    }
+
+    delay(100);
 
 
     // Read all data registers
@@ -205,20 +213,19 @@ void readSensor()
         Serial.println("Failed to read spectral data.");
     }
 
+    
+    uint16_t red_reading = mySensor.getRed();
+    uint16_t green_reading = mySensor.getGreen();
+    uint16_t blue_reading = mySensor.getBlue();
+
+
+    uint8_t rgbRed, rgbGreen, rgbBlue;
+
+    color.red = (red_reading / 1024.0) * 255;
+    color.green = (green_reading / 1024.0) * 255;
+    color.blue = (blue_reading / 1024.0) * 255;
+  
     mySensor.ledOff();
-
-    // Get the data from the sensor (all channels)
-    // Note, we are using AutoSmux set to 18 channels
-    // and the data will be written to the myData array
-    // The size of the array is defined in the header file
-    // This method returns the number of channels read
-    int channelsRead = mySensor.getData(myData);
-
-
-    color.red = myData[0];
-    color.green = myData[1];
-    color.blue = myData[2];
-    color.nir = myData[3];
 }
 
 void returnColor()
@@ -228,7 +235,6 @@ void returnColor()
   cmdMessenger.sendCmdBinArg<uint16_t>(color.red);
   cmdMessenger.sendCmdBinArg<uint16_t>(color.green);
   cmdMessenger.sendCmdBinArg<uint16_t>(color.blue);
-  cmdMessenger.sendCmdBinArg<uint16_t>(color.nir);
 
   cmdMessenger.sendCmdEnd();
 }
@@ -268,7 +274,7 @@ void readPumpStep(Pump &currentStepPump, Pump &pump)
 
     currentStepPump.time = cmdMessenger.readBinArg<unsigned long>();
     currentStepPump.stepStartTime = millis();
-    currentStepPump.done = false; 
+    currentStepPump.done = false;
 
     pump.state = currentStepPump.state;
     pump.speed = currentStepPump.speed;
@@ -313,6 +319,7 @@ void receiveStep()
     }
     else
     {
+      currentStep.pumpA.done = true;
       StopPumpA();
     }
 
@@ -322,6 +329,7 @@ void receiveStep()
     }
     else
     {
+      currentStep.pumpB.done = true;
       StopPumpB();
     }
 
@@ -331,6 +339,7 @@ void receiveStep()
     }
     else
     {
+      currentStep.pumpC.done = true;
       StopPumpC();
     }
 

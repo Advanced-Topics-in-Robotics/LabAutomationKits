@@ -41,7 +41,7 @@ class RealMicrocontrollerService:
                     ["kStop", ""],
                     ["kStepDone", ""],
                     ["kGetColor", ""],
-                    ["kGetColorResult", "IIII"], ]
+                    ["kGetColorResult", "III"], ]
 
         # Initialize the messenger
         self.comm = PyCmdMessenger.CmdMessenger(ESP32, commands)
@@ -126,7 +126,7 @@ class RealMicrocontrollerService:
         msg = self.comm.receive()
         result = msg[1]
 
-        if len(result) != 4:
+        if len(result) != 3:
             log.error(f"Unexpected color data length: {len(result)}")
             return False
 
@@ -177,6 +177,8 @@ class RealMicrocontrollerService:
         log.debug("Checking for step completion")
         try:
             msg = self.comm.receive()
+            if msg is None:
+                log.debug("No message received yet")
             if msg is not None:
                 log.debug(f"Step check message: {msg[0]}")
             if msg is not None and msg[0] == "kStepDone":

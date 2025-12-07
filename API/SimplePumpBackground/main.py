@@ -87,7 +87,6 @@ def monitor_operations(job_id, pumpA, pumpB, pumpC, step_time):
 
     interval = 0.1
 
-
     while not (pump_done):
         now = time.time()
         elapsed = now - start_time
@@ -156,9 +155,9 @@ def start_cleaning_cycle(background_tasks: BackgroundTasks):
     busy = True
     stop_requested = False
 
-    pumpA = PumpCommand(state=True, speed=2000, dir=True, time=5000)
-    pumbB = PumpCommand(state=False, speed=0, dir=True, time=0)
-    pumpC = PumpCommand(state=True, speed=2000, dir=False, time=10000)
+    pumpA = PumpCommand(state=False, speed=2000, dir=False, time=5000)
+    pumbB = PumpCommand(state=False, speed=0, dir=False, time=0)
+    pumpC = PumpCommand(state=True, speed=10000, dir=True, time=40000)
     request = ActionRequest(
         id="cleaning_cycle",
         pumpA=pumpA,
